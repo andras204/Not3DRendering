@@ -13,24 +13,46 @@ namespace Not3DRendering
             this.spawn_point = spawn_point;
         }
 
-        public static Level test_box() {
+        public static Level level_1()
+        {
             string[] map = new string[] {
                 "########",
                 "#......#",
                 "#......#",
-                "#......#",
-                "#......#",
+                "#......E",
                 "#......#",
                 "#......#",
                 "########",
             };
 
-            vec2 sp = new vec2(1.5f, 1.5f);
+            vec2 sp = new vec2(1.5f, 3.5f);
 
             return new Level(map, sp);
         }
 
-        public static Level level_1() {
+        public static Level level_2()
+        {
+            string[] map = new string[] {
+                "###########",
+                "#.........#",
+                "#.........#",
+                "#.........#",
+                "#######...#",
+                "      #...#",
+                "      #...#",
+                "      #...#",
+                "      #...#",
+                "      #...#",
+                "      ##E##",
+            };
+
+            vec2 sp = new vec2(1.5f, 2.5f);
+
+            return new Level(map, sp);
+        }
+
+        public static Level level_3()
+        {
             string[] map = new string[] {
                 "##############",
                 "#....#.......#",
@@ -42,7 +64,7 @@ namespace Not3DRendering
                 "##.....#######",
                 "#......#.....#",
                 "##.....#.....#",
-                "#.........#..#",
+                "#.........#..E",
                 "##.....#.....#",
                 "#......#.....#",
                 "##############",

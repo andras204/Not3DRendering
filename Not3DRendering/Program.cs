@@ -27,7 +27,7 @@ namespace Not3DRendering
 
             Game game = Game.default_with_renderer(custom_renderer);
 
-            game.run_loop();
+            game.start();
         }
     }
 }

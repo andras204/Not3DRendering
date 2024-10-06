@@ -6,11 +6,27 @@ namespace Not3DRendering
     internal class Renderer
     {
         const char FULL_BLOCK = '█';
-        const char MAXTONE_BLOCK = '▓';
+        const char THREETONE_BLOCK = '▓';
         const char HALFTONE_BLOCK = '▒';
         const char QUARTERTONE_BLOCK = '░';
         const char BLANK = ' ';
         const char FLOOR = '.';
+
+        const string EXIT_TEXTURE = " EXIT ";
+
+        class RaycastHit
+        {
+            public float distance;
+            public char surface;
+            public bool corner;
+
+            public RaycastHit(float distance, char surface, bool corner)
+            {
+                this.distance = distance;
+                this.surface = surface;
+                this.corner = corner;
+            }
+        }
 
         ivec2 resolution;
 
@@ -42,46 +58,42 @@ namespace Not3DRendering
 
         public ivec2 get_resolution() { return resolution; }
 
-        public void draw_frame(ref Player player, ref Level level)
+        public void draw_frame(ref Player player, ref string[] map)
         {
-            (float[], bool[]) ray_hits = raycast(ref player, ref level);
-            draw_distances(ray_hits);
+            RaycastHit[] ray_hits = raycast(ref player, ref map);
+            draw_hits(ray_hits);
         }
 
-        (float[], bool[]) raycast(ref Player player, ref Level level)
+        RaycastHit[] raycast(ref Player player, ref string[] map)
         {
             float fov_step = field_of_view / (float)resolution.x;
             float fov_start = (player.direction - (field_of_view / 2f)) + (fov_step / 2f);
 
-            float[] dist = new float[resolution.x];
-            bool[] corner = new bool[resolution.x];
+            RaycastHit[] hits = new RaycastHit[resolution.x];
 
             for (int x = 0; x < resolution.x; x++)
             {
                 vec2 ray_dir = vec2.from_angle(fov_start + ((float)x * fov_step));
 
-                dist[x] = max_view_distance;
-
                 for (float d = 0f; d < max_view_distance; d += ray_step_size)
                 {
                     vec2 ray_pos = player.position + (d * ray_dir);
                     ivec2 test_index = ray_pos.into_ivec2();
-                    if (level.map[test_index.y][test_index.x] == '#')
+                    if (map[test_index.y][test_index.x] != '.')
                     {
-                        dist[x] = d;
                         // corner detection
                         float fx = fract(ray_pos.x);
                         float fy = fract(ray_pos.y);
-                        corner[x] = (fx > 0.95 || fx < 0.05) && (fy > 0.95 || fy < 0.05);
+                        hits[x] = new RaycastHit(d / max_view_distance, map[test_index.y][test_index.x], (fx > 0.95 || fx < 0.05) && (fy > 0.95 || fy < 0.05));
                         break;
                     }
                 }
             }
 
-            return (dist, corner);
+            return hits;
         }
 
-        void draw_distances((float[], bool[]) ray_hits)
+        void draw_hits(RaycastHit[] ray_hits)
         {
             char[,] out_buffer = new char[resolution.x, resolution.y];
 
@@ -96,29 +108,30 @@ namespace Not3DRendering
                 }
             }
 
-            float[] distances = ray_hits.Item1;
-            bool[] corners = ray_hits.Item2;
-
-            normalize_distances(ref distances);
-
             for (int x = 0; x < resolution.x; x++)
             {
-                if (distances[x] >= 1f) { continue; }
+                if (ray_hits[x] is null) { continue; }
+                if (ray_hits[x].distance >= 1f) { continue; }
 
-                // fade walls based on distance
-                char strip_char = QUARTERTONE_BLOCK;
-                if (distances[x] <= 0.66f) { strip_char = HALFTONE_BLOCK; }
-                if (distances[x] <= 0.35f) { strip_char = MAXTONE_BLOCK; }
-                if (distances[x] <= 0.15f) { strip_char = FULL_BLOCK; }
-                // color corners differently to add some texture to walls
-                if (corners[x]) { strip_char = BLANK; }
+                char strip_char = get_wall_texture(ray_hits[x]);
+                
+                int texture_scroll = x % EXIT_TEXTURE.Length;
 
-                int strip_length = (int)((float)resolution.y * (1f - distances[x]));
+                int strip_length = (int)((float)resolution.y * (1f - ray_hits[x].distance));
                 int strip_start = (resolution.y - strip_length) / 2;
                 int strip_end = resolution.y - strip_start;
                 for (int y = 0; y < resolution.y; y++)
                 {
-                    if (y >= strip_start && y <= strip_end) { out_buffer[x, y] = strip_char; }
+                    if (y >= strip_start && y <= strip_end)
+                    {
+                        if (ray_hits[x].surface == 'E')
+                        {
+                            out_buffer[x, y] = EXIT_TEXTURE[texture_scroll];
+                            texture_scroll = (texture_scroll + 1) % EXIT_TEXTURE.Length;
+                            continue;
+                        }
+                        out_buffer[x, y] = strip_char;
+                    }
                 }
             }
 
@@ -138,12 +151,15 @@ namespace Not3DRendering
             Console.WriteLine(final_output);
         }
 
-        void normalize_distances(ref float[] distances)
+        char get_wall_texture(RaycastHit hit)
         {
-            for (int i = 0; i < distances.Length; i++) 
-            {
-                distances[i] = distances[i] / max_view_distance;
-            }
+            // color corners differently to add some texture to walls
+            if (hit.corner) { return BLANK; }
+            // fade walls based on distance
+            if (hit.distance > 0.66f) { return QUARTERTONE_BLOCK; }
+            if (hit.distance > 0.35f) { return HALFTONE_BLOCK; }
+            if (hit.distance > 0.15f) { return THREETONE_BLOCK; }
+            return FULL_BLOCK;
         }
     }
 }
